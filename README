@@ -15,3 +15,5 @@ stuff supported.
  Feel free to grab the source files in here and help out!
 
  The 'test.java' is the actual program that uses the curl stuff.
+
+* Makefile updated March 2010 to compile on Macintosh by Paul Legato (pjlegato at gmail dot com)
