@@ -1,12 +1,16 @@
 #!/usr/bin/perl
 # Hack to create CurlGlue.java from curl.h
+# Reads a preprocessed compiler output from STDIN and parses with
+# a regex for the wanted defines, then writes them to STDOUT. 
 # Initial version: Daniel <daniel@haxx.se>
 # Updated version: Guenter <eflash@gmx.net>
 #
+# $Id: MakeCurlGlue.pl 42 2008-10-20 09:27:21Z patrick $
+#
 
-open(IN, "${ARGV[1]}");
+open(IN, "${ARGV[0]}");
 while(<IN>) {
-    if(/^#define LIBCURL_VERSION \"(\d{1,3}\.\d{1,3}\.\d{1,3}.*)\"$/) {
+    if(/^#define LIBCURL_VERSION \"(\d+\.\d+\.\d+.*)\"$/) {
          $curl_ver = $1;
     }
 }
@@ -27,9 +31,7 @@ public class CurlGlue
   // start of generated list - this list is up-to-date as of Curl $curl_ver
 EOTXT
 
-open(GCC, "gcc -E ${ARGV[0]}|");
-
-while(<GCC>) {
+while(<STDIN>) {
     if($_ =~ /(CURLOPT_(.*)) += (.*)/) {
         $var= $1;
         $expr = $3;
@@ -44,11 +46,9 @@ while(<GCC>) {
 
         $var =~ s/ $//g;
 
-        print "    public static final int $var = $expr;\n";
+        print "  public static final int $var = $expr;\n";
     }
 }
-
-close(GCC);
 
 print <<EOTXT;
   // end of generated list
@@ -81,6 +81,7 @@ print <<EOTXT;
   private native int jni_setopt(int libcurl, int option, CurlIO value);
 
   public native int getinfo();
+  public static native String version();
 
   public int perform() {
     return jni_perform(curljava_handle);
@@ -100,8 +101,6 @@ print <<EOTXT;
   public int setopt(int option, CurlIO value) {
     return jni_setopt(curljava_handle, option, value);
   }
-
-  public static native String version();
 
   static {
     try {

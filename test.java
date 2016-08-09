@@ -1,7 +1,13 @@
-// This test application accesses the Web site from Banco Santander, a Mexican bank, performs a login
-// over SSL, receives a cookie and obtain the balance of a bank account, all using libcurl from Java
+/*
+** This test application accesses the Web site from Banco Santander,
+** a Mexican bank, performs a login over SSL, receives a cookie and 
+** obtain the balance of a bank account, all using libcurl from Java.
+**
+** $Id: test.java 42 2008-10-20 09:27:21Z patrick $
+*/
 
 // import CurlGlue;
+// import CurlRead;
 // import CurlWrite;
 
 class test extends CurlIO {
@@ -30,10 +36,11 @@ class test extends CurlIO {
 
         boolean bInsecureMode = false;
         if( args.length == 1 )
-            bInsecureMode = (args[0].compareTo("-k") == 0) ||
-                            (args[0].compareTo("--insecure") == 0);
-        System.out.println( "Using " + (bInsecureMode ? "in" : "") + "secure certificate mode.");
-        System.out.println("curl library version: " + CurlGlue.version());
+            bInsecureMode = ( args[0].compareTo("-k") == 0 ) ||
+                            ( args[0].compareTo("--insecure") == 0 );
+
+        // System.out.println( "libcurl version: " + CurlGlue.version() );
+        System.out.println( "Using " + (bInsecureMode ? "in" : "") + "secure certificate mode." );
 
         CurlGlue cg;
 

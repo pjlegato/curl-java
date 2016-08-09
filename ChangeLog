@@ -1,5 +1,15 @@
+Changes with version 0.2.3
+
 Changes with version 0.2.2
-* Thu Jan 24 2008 Patrick Monnerat <pm datasphere.ch>
+* Feb  6 2008 Patrick Monnerat <pm datasphere.ch>
+  - Get rid of define2java.pl in automake (use Java version instead).
+  _ RPM spec file generation at "configure" time.
+  _ Few other autotool files adjustments.
+* Jan 24 2008 Guenter Knauf <eflash gmx.net>
+  - moved preprocessing or curl.h into Makefile so that we
+    dont might end up with using a wrong compiler.
+  - added simple class to fetch curljava version info from configure.ac.
+* Jan 24 2008 Patrick Monnerat <pm datasphere.ch>
   - Package name is curl-java.
   - All other "javacurl" naming changed to "curljava" to avoid confusion
     with lame SF project.

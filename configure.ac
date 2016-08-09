@@ -1,3 +1,7 @@
+#
+# $Id: configure.ac 43 2008-10-20 09:46:19Z patrick $
+#
+
 AC_PREREQ(2.57)
 AC_INIT([curljava.c])
 AC_CONFIG_SRCDIR([curljava.c])
@@ -6,8 +10,8 @@ AC_CONFIG_SRCDIR([curljava.c])
 
 CURLJAVA_MAJOR=0
 CURLJAVA_MINOR=2
-CURLJAVA_MICRO=2
-CURLJAVA_EXT=pm			# CVS, SVN or whatever...
+CURLJAVA_MICRO=3
+CURLJAVA_EXT=			# CVS, SVN or whatever...
 
 CURLJAVA_VERSION="${CURLJAVA_MAJOR}.${CURLJAVA_MINOR}.${CURLJAVA_MICRO}"
 
@@ -32,7 +36,6 @@ AM_DISABLE_STATIC
 #	Check for programs.
 
 AC_PROG_CC
-AC_PATH_PROG(PERL, perl)
 AC_PROG_INSTALL
 AC_LIBTOOL_WIN32_DLL
 AM_PROG_LIBTOOL
@@ -116,5 +119,5 @@ AC_SUBST(jardir)
 
 #	Generate configurated files.
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile curl-java.spec])
 AC_OUTPUT
