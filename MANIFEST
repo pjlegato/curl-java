@@ -1,7 +1,9 @@
 CurlGlue.java
 CurlWrite.java
+CurlRead.java
+CurlIO.java
 define2java.pl
-javacurl.c
+curljava.c
 Makefile
 README
 test.java
