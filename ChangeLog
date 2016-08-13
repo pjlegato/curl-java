@@ -1,0 +1,34 @@
+Changes with version 0.2.3
+
+Changes with version 0.2.2
+* Feb  6 2008 Patrick Monnerat <pm datasphere.ch>
+  - Get rid of define2java.pl in automake (use Java version instead).
+  _ RPM spec file generation at "configure" time.
+  _ Few other autotool files adjustments.
+* Jan 24 2008 Guenter Knauf <eflash gmx.net>
+  - moved preprocessing or curl.h into Makefile so that we
+    dont might end up with using a wrong compiler.
+  - added simple class to fetch curljava version info from configure.ac.
+* Jan 24 2008 Patrick Monnerat <pm datasphere.ch>
+  - Package name is curl-java.
+  - All other "javacurl" naming changed to "curljava" to avoid confusion
+    with lame SF project.
+  - Class function CurlGlue.version added.
+  - #ifdef DEBUG around fprintf calls.
+  - puts --> fputs..., stderr for error messages.
+* Jan 23 2008 Guenter Knauf <eflash gmx.net>
+  - few more makefile improvements.
+* Jan 22 2008 Patrick Monnerat <pm datasphere.ch>
+  - Autotoolized.
+  - New classes CurlRead and CurlIO.
+
+Changes with version 0.2.1
+* Jan 17 2008 Guenter Knauf <eflash gmx.net>
+  - rewrote define2java.pl to create CurlGlue.java in one go.
+  - added NetWare support.
+
+Released as version 0.2.0
+* Oct 01 2001 Daniel Stenberg <daniel haxx.se>
+  - Initial code.
+
+

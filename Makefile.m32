@@ -1,0 +1,195 @@
+###################################################################
+#
+## Makefile for building curljava.dll (MingW32 version - gnu make)
+## Use: make -f Makefile.m32
+##
+## Comments to: Guenter Knauf http://www.gknw.net/phpbb
+##
+## $Id: Makefile.m32 42 2008-10-20 09:27:21Z patrick $
+#
+###################################################################
+
+# Stop if we have no JAVA_HOME var pointing to J2SDK!
+ifndef JAVA_HOME
+$(error You must set the JAVA_HOME environment variable!)
+endif
+# Edit the path below to point to the base of your libcurl sources.
+ifndef LIBCURL_PATH
+LIBCURL_PATH = ../../curl-7.18.0
+$(warning Using makefile default: LIBCURL_PATH=$(LIBCURL_PATH))
+endif
+# Edit the path below to point to the base of your Zlib sources.
+ifndef ZLIB_PATH
+ZLIB_PATH = ../../zlib-1.2.3
+$(warning Using makefile default: ZLIB_PATH=$(ZLIB_PATH))
+endif
+# Edit the path below to point to the base of your OpenSSL package.
+ifndef OPENSSL_PATH
+OPENSSL_PATH = ../../openssl-0.9.8g
+$(warning Using makefile default: OPENSSL_PATH=$(OPENSSL_PATH))
+endif
+# Edit the path below to point to the base of your LibSSH2 package.
+ifndef LIBSSH2_PATH
+LIBSSH2_PATH = ../../libssh2-0.18
+$(warning Using makefile default: LIBSSH2_PATH=$(LIBSSH2_PATH))
+endif
+# Edit the path below to point to the base of your Novell LDAP NDK.
+ifndef LDAP_SDK
+LDAP_SDK = c:/novell/ndk/cldapsdk/win32
+$(warning Using makefile default: LDAP_SDK=$(LDAP_SDK))
+endif
+
+TARGET	= curljava
+SOEXT	= dll
+COPYR	= © 2001-2008 Daniel Stenberg, <daniel@haxx.se>.
+DESCR	= $(TARGET) - Java JNI binding to the cURL library
+WWWURL	= http://curl.haxx.se/libcurl/java/
+COMPANY	= The cURL library, http://curl.haxx.se/
+
+CC	= gcc
+CPP	= $(CC) -E
+CFLAGS	= -Wall -Wno-format -Wno-switch -O2 
+RC	= windres
+RCFLAGS	= -O COFF -i
+PERL	= perl
+JAR	= "$(JAVA_HOME)/bin/jar"
+JAVA	= "$(JAVA_HOME)/bin/java"
+JAVAC	= "$(JAVA_HOME)/bin/javac"
+JAVAH	= "$(JAVA_HOME)/bin/javah"
+CP	= cp -af
+# RM	= del /q /f > NUL 2>&1
+
+# version info fetched from configure.ac
+-include version.inc 
+
+JNI_VERSION_DLL = $(CURLJAVA_MAJOR),$(CURLJAVA_MINOR),$(CURLJAVA_MICRO)
+JNI_VERSION_STR = $(CURLJAVA_MAJOR).$(CURLJAVA_MINOR).$(CURLJAVA_MICRO)
+
+# Note: with JDK1.3 you might have to replace "__int64" in jni_md.h by "signed long"
+#       if you are encountering any compilation problem
+JAVA_INC = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/win32
+CURL_INC = -I$(LIBCURL_PATH)/include
+
+# Note: the libraries used below are for libcurl with SSL. You will probably need to
+#       rebuild OpenSSL with MinGW32 and then rebuild libcurl with SSL support. Using
+#       the default libcurl.a from the Curl distribution is likely to cause a failure
+#       at link time.
+#LDFLAGS = -v -s -shared -Wl,--add-stdcall-alias -L. -lcurl -lssl -lcrypto
+LDFLAGS= -s -shared -Wl,--add-stdcall-alias
+LDFLAGS += -L$(LIBCURL_PATH)/lib
+LDFLAGS += -L$(ZLIB_PATH)
+LDFLAGS += -L$(OPENSSL_PATH)/out
+ifdef LINK_STATIC
+CFLAGS  += -DCURL_STATICLIB
+LDFLAGS += -lcurl -lz
+LDFLAGS += -lssl -lcrypto
+LDFLAGS += -lwldap32 -lws2_32 -lwinmm
+else
+LDFLAGS += -lcurldll -lzdll
+LDFLAGS += -lssl32 -leay32
+endif
+
+OBJS	= $(TARGET).o
+CLASSES	= CurlGlue.class CurlWrite.class CurlRead.class CurlIO.class
+
+ifeq ($(findstring msys,$(OSTYPE)),msys)
+DL	= '
+endif
+
+# PARSEPRG = MakeCurlGlue.pl
+# PARSECMD = $(PERL) $(PARSEPRG)
+PARSEPRG = MakeCurlGlue.class
+PARSECMD = $(JAVA) -classpath $(CWD) $(PARSEPRG:.class=)
+
+# CWD = $(shell pwd)
+CWD = .
+
+.SUFFIXES: .java .class .rc .res
+
+
+all: test.class
+
+# Note: CurlGlue needs to be able to load the curljava JNI from the current
+#       directory, or wherever it is stored. Update java.library.path as needed.
+test: test.class
+	@echo =============================================================
+	@echo ======================= Starting Test =======================
+	@echo =============================================================
+	$(JAVA) -Djava.library.path=. -classpath $(CWD) test
+
+version.inc: configure.ac GetJniVersion.class
+	$(JAVA) -classpath $(CWD) GetJniVersion $< $@
+
+CurlGlue.h: CurlGlue.class CurlGlue.java
+	$(JAVAH) -classpath $(CWD) $*
+
+$(TARGET).o: $(TARGET).c CurlGlue.h
+	$(CC) $(CFLAGS) $(JAVA_INC) $(CURL_INC) -c $<
+
+$(TARGET).$(SOEXT): $(OBJS) $(TARGET).res
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+.rc.res:
+	$(RC) $(RCFLAGS) $< -o $@
+
+.java.class:
+	$(JAVAC) -classpath $(CWD) $<
+
+test.class: test.java $(CLASSES) $(TARGET).$(SOEXT)
+	$(JAVAC) -classpath $(CWD) $<
+
+FORCE: ;
+
+CurlGlue.java: $(LIBCURL_PATH)/include/curl/curl.h $(LIBCURL_PATH)/include/curl/curlver.h $(PARSEPRG) FORCE
+	$(CPP) $(CURL_INC) $< | $(PARSECMD) $(LIBCURL_PATH)/include/curl/curlver.h > $@
+
+clean:
+	-$(RM) $(TARGET).$(SOEXT) $(OBJS) CurlGlue.h
+	-$(RM) $(TARGET).res $(TARGET).rc version.inc
+	-$(RM) $(CLASSES)
+
+testclean:
+	-$(RM) test.class cookie.txt *.log
+
+distclean: clean testclean
+	-$(RM) MakeCurlGlue.class GetJniVersion.class
+	-$(RM) CurlGlue.java 
+
+%.jar: $(CLASSES) test.class
+	$(JAR) -cvf $@ $^
+
+%.rc: version.inc Makefile.m32
+	@echo $(DL)1 VERSIONINFO$(DL) > $@
+	@echo $(DL) FILEVERSION $(JNI_VERSION_DLL),0$(DL) >> $@
+	@echo $(DL) PRODUCTVERSION $(JNI_VERSION_DLL),0$(DL) >> $@
+	@echo $(DL) FILEFLAGSMASK 0x3fL$(DL) >> $@
+	@echo $(DL) FILEOS 0x40004L$(DL) >> $@
+	@echo $(DL) FILEFLAGS 0x0L$(DL) >> $@
+	@echo $(DL) FILETYPE 0x2L$(DL) >> $@
+	@echo $(DL) FILESUBTYPE 0x0L$(DL) >> $@
+	@echo $(DL)BEGIN$(DL) >> $@
+	@echo $(DL)  BLOCK "StringFileInfo"$(DL) >> $@
+	@echo $(DL)  BEGIN$(DL) >> $@
+	@echo $(DL)    BLOCK "040904E4"$(DL) >> $@
+	@echo $(DL)    BEGIN$(DL) >> $@
+	@echo $(DL)      VALUE "LegalCopyright","$(COPYR)\0"$(DL) >> $@
+ifdef COMPANY
+	@echo $(DL)      VALUE "CompanyName","$(COMPANY)\0"$(DL) >> $@
+endif
+	@echo $(DL)      VALUE "ProductName","$(notdir $(@:.rc=.$(SOEXT)))\0"$(DL) >> $@
+	@echo $(DL)      VALUE "ProductVersion","$(JNI_VERSION_STR)\0"$(DL) >> $@
+	@echo $(DL)      VALUE "License","Released under GPL.\0"$(DL) >> $@
+	@echo $(DL)      VALUE "FileDescription","$(DESCR)\0"$(DL) >> $@
+	@echo $(DL)      VALUE "FileVersion","$(JNI_VERSION_STR)\0"$(DL) >> $@
+	@echo $(DL)      VALUE "InternalName","$(notdir $(@:.rc=))\0"$(DL) >> $@
+	@echo $(DL)      VALUE "OriginalFilename","$(notdir $(@:.rc=.$(SOEXT)))\0"$(DL) >> $@
+	@echo $(DL)      VALUE "WWW","$(WWWURL)\0"$(DL) >> $@
+	@echo $(DL)    END$(DL) >> $@
+	@echo $(DL)  END$(DL) >> $@
+	@echo $(DL)  BLOCK "VarFileInfo"$(DL) >> $@
+	@echo $(DL)  BEGIN$(DL) >> $@
+	@echo $(DL)    VALUE "Translation", 0x409, 1252$(DL) >> $@
+	@echo $(DL)  END$(DL) >> $@
+	@echo $(DL)END$(DL) >> $@
+
+

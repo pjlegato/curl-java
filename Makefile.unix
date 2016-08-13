@@ -1,0 +1,96 @@
+# Note: this makefile has been tested with Linux gcc and Sun JDK
+#       under Linux XXYYZZ using Curl 7.17.1 and OpenSSL 0.9.8g
+#
+# $Id: Makefile.unix 42 2008-10-20 09:27:21Z patrick $
+#
+
+# Stop if we have no JAVA_HOME var pointing to J2SDK!
+ifndef JAVA_HOME
+$(error You must set the JAVA_HOME environment variable!)
+endif
+# Edit the path below to point to the base of your libcurl sources.
+ifndef LIBCURL_PATH
+LIBCURL_PATH = /usr/local
+$(warning Using makefile default: LIBCURL_PATH=$(LIBCURL_PATH))
+endif
+
+TARGET	= curljava
+SOEXT	= so
+SOPRE	= lib
+
+CC	= gcc
+CPP	= $(CC) -E
+CFLAGS	= -Wall -Wno-format -Wno-switch -O2 
+PERL	= perl
+JAR	= $(JAVA_HOME)/bin/jar
+JAVA	= $(JAVA_HOME)/bin/java
+JAVAC	= $(JAVA_HOME)/bin/javac
+JAVAH	= $(JAVA_HOME)/bin/javah
+CP	= cp -af
+# RM	= rm -f
+
+JAVA_INC = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
+CURL_INC = -I$(LIBCURL_PATH)/include
+
+LDFLAGS	= -s -shared
+LDFLAGS	+= -lcurl
+
+OBJS	= $(TARGET).o
+CLASSES	= CurlGlue.class CurlWrite.class CurlRead.class CurlIO.class
+
+# PARSEPRG = MakeCurlGlue.pl
+# PARSECMD = $(PERL) $(PARSEPRG)
+PARSEPRG = MakeCurlGlue.class
+PARSECMD = $(JAVA) -classpath $(CWD) $(PARSEPRG:.class=)
+
+# CWD = $(shell pwd)
+CWD = .
+
+.SUFFIXES: .java .class
+
+
+all: test.class
+
+# Note: CurlGlue needs to be able to load the curljava JNI from the current
+#       directory, or wherever it is stored. Update java.library.path as needed.
+test: test.class
+	@echo '============================================================='
+	@echo '======================= Starting Test ======================='
+	@echo '============================================================='
+	$(JAVA) -Djava.library.path=$(CWD) -classpath $(CWD) test
+
+CurlGlue.h: CurlGlue.class CurlGlue.java
+	$(JAVAH) -classpath $(CWD) $*
+
+$(TARGET).o: $(TARGET).c CurlGlue.h
+	$(CC) $(CFLAGS) $(JAVA_INC) $(CURL_INC) -c $<
+
+$(SOPRE)$(TARGET).$(SOEXT): $(OBJS)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+.java.class:
+	$(JAVAC) -classpath $(CWD) $<
+
+test.class: test.java $(CLASSES) $(SOPRE)$(TARGET).$(SOEXT)
+	$(JAVAC) -classpath $(CWD) $<
+
+FORCE: ;
+
+CurlGlue.java: $(LIBCURL_PATH)/include/curl/curl.h $(LIBCURL_PATH)/include/curl/curlver.h $(PARSEPRG) FORCE
+	$(CPP) $(CURL_INC) $< | $(PARSECMD) $(LIBCURL_PATH)/include/curl/curlver.h > $@
+
+clean:
+	-$(RM) $(SOPRE)$(TARGET).$(SOEXT) $(OBJS) CurlGlue.h
+	-$(RM) $(CLASSES)
+
+testclean:
+	-$(RM) test.class cookie.txt *.log 
+
+distclean: clean testclean
+	-$(RM) MakeCurlGlue.class GetJniVersion.class
+	-$(RM) CurlGlue.java 
+
+%.jar: $(CLASSES) test.class
+	$(JAR) -cvf $@ $^
+
+
