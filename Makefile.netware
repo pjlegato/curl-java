@@ -1,6 +1,6 @@
 ###################################################################
 #
-## Makefile for building javacurl.nlm (NetWare version - gnu make)
+## Makefile for building curljava.nlm (NetWare version - gnu make)
 ## Use: make -f Makefile.netware
 ##
 ## Comments to: Guenter Knauf <eflash@gmx.net>
@@ -9,34 +9,46 @@
 
 # Edit the path below to point to the base of your Novell NDK.
 ifndef NDKBASE
-NDKBASE	= c:/novell
+NDKBASE = c:/novell
+$(warning Using makefile default: NDKBASE=$(NDKBASE))
 endif
-
-# Edit the path below to point to the base of your Zlib sources.
-ifndef ZLIB_PATH
-#ZLIB_PATH = ../../zlib-1.2.3
-ZLIB_PATH = ../../cw/zlib-1.2.3
-endif
-
-# Edit the path below to point to the base of your OpenSSL package.
-ifndef OPENSSL_PATH
-OPENSSL_PATH = ../../sdks/openssl_nw-bsd-0.9.8g
-endif
-
-# Edit the path below to point to the base of your cURL source.
-LIBCURL_PATH = ../../gccnlm/curl-7.17.1
 
 # Edit the path below to point to the base of your NetWare Java SDK.
-JDK	= ../../sdks/java-nw
+ifndef JDK
+JDK = ../../sdks/java-nw
+$(warning Using makefile default: JDK=$(JDK))
+endif
+# Edit the path below to point to the base of your libcurl sources.
+ifndef LIBCURL_PATH
+LIBCURL_PATH = ../../curl-7.17.1
+$(warning Using makefile default: LIBCURL_PATH=$(LIBCURL_PATH))
+endif
+# Edit the path below to point to the base of your Zlib sources.
+ifndef ZLIB_PATH
+ZLIB_PATH = ../../zlib-1.2.3
+$(warning Using makefile default: ZLIB_PATH=$(ZLIB_PATH))
+endif
+# Edit the path below to point to the base of your OpenSSL package.
+ifndef OPENSSL_PATH
+OPENSSL_PATH = ../../openssl-0.9.8g
+$(warning Using makefile default: OPENSSL_PATH=$(OPENSSL_PATH))
+endif
+# Edit the path below to point to the base of your LibSSH2 package.
+ifndef LIBSSH2_PATH
+LIBSSH2_PATH = ../../libssh2-0.18
+$(warning Using makefile default: LIBSSH2_PATH=$(LIBSSH2_PATH))
+endif
 
-INSTDIR = testjavacurl
+INSTDIR = testcurljava
 
-TARGET	= javacurl
+TARGET	= curljava
+SOEXT	= nlm
 VERMAJ	= 0
 VERMIN	= 2
-VERREV	= 0
-DESCR	= $(TARGET) - Java binding to the cURL library
-COPYR	= Copyright (c) 1996 - 2008, Daniel Stenberg, <daniel@haxx.se>
+VERREV	= 2
+DESCR	= $(TARGET) - Java JNI binding to the cURL library
+COPYR	= Copyright (c) 2001-2008 Daniel Stenberg, <daniel@haxx.se>
+WWWURL	= http://curl.haxx.se/libcurl/java/
 #MTSAFE	= NO
 MTSAFE	= YES
 #SCREEN	= $(TARGET)
@@ -55,8 +67,12 @@ else
 	CC = gcc
 endif
 PERL	= perl
-# RM	= rm -f
+JAR	= jar
+JAVAC	= javac
+JAVAH	= javah
+TOUCH	= touch
 CP	= cp -afv
+# RM	= rm -f
 # if you want to mark the target as MTSAFE you will need a tool for
 # generating the xdc data for the linker; here's a minimal tool:
 # http://www.gknw.net/development/prgtools/mkxdc.zip
@@ -89,8 +105,8 @@ endif
 else
 LD	= nlmconv
 LDFLAGS	= -T
-CFLAGS	+= -fno-builtin -fpack-struct -fpcc-struct-return
-CFLAGS	+= -Wall # -pedantic
+CFLAGS	+= -fno-builtin -fpcc-struct-return
+CFLAGS	+= -Wall -Wno-format -Wno-switch
 ifeq ($(LIBARCH),LIBC)
 	PRELUDE = $(SDK_LIBC)/imports/libcpre.gcc.o
 else
@@ -137,8 +153,11 @@ INCLUDES += -I$(LIBCURL_PATH)/include
 CFLAGS += $(INCLUDES)
 
 OBJS	= $(TARGET).o nwlib.o
+CLASSES	= CurlGlue.class CurlWrite.class CurlRead.class CurlIO.class
 
-# vpath %.c . $(LIBCURL_PATH)/lib
+vpath %.c . $(LIBCURL_PATH)/lib
+
+.SUFFIXES: .java .class
 
 #all:		$(TARGET).nlm
 all:		test.class
@@ -160,18 +179,21 @@ install:	all
 clean:
 		-$(RM) *.o $(TARGET).map $(TARGET).ncv $(TARGET).def $(TARGET).xdc
 		-$(RM) $(TARGET).imp $(TARGET).nlm 
-		-$(RM) *.class CurlGlue.h
+		-$(RM) $(CLASSES) test.class CurlGlue.h
 		-$(RM) -r $(LIBARCH)
 
 CurlGlue.h:	CurlGlue.class CurlGlue.java
-		javah CurlGlue
-		touch CurlGlue.h
+		$(JAVAH) $*
+		$(TOUCH) $@
 
-test.class:	$(TARGET).nlm
-		javac test.java
+.java.class:
+		$(JAVAC) $<
 
-CurlGlue.class:	CurlGlue.java
-		javac $<
+test.class:	test.java $(CLASSES) $(TARGET).nlm
+		$(JAVAC) $<
+
+%.jar:		$(CLASSES) test.class
+		$(JAR) -cvf $@ $^
 
 CurlGlue.java:	$(LIBCURL_PATH)/include/curl/curl.h $(LIBCURL_PATH)/include/curl/curlver.h
 		$(PERL) define2java.pl $^ > $@

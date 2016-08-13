@@ -16,4 +16,23 @@ stuff supported.
 
  The 'test.java' is the actual program that uses the curl stuff.
 
-* Makefile updated March 2010 to compile on Macintosh by Paul Legato (pjlegato at gmail dot com)
+
+
+Version 0.2.2 features:
+
+ Only the "easy" interface is supported. No multi, no formadd, etc.
+Interface class CurlWrite implements CURLOPT_WRITEFUNCTION. Interface class
+CurlRead implements CURLOPT_READFUNCTION. All other setopt() callbacks are
+not implemented.
+
+Class CurlIO supports both read and write via subclassing. It does not require
+to define unused callbacks in subclasses. Using this class should be preferred
+to CurlRead and CurlWrite, since the former might be extended in the future
+eith other callbacks, while the later will not.
+
+At the source level, options (CURLOPT_*) are symbolized, but not the
+option arguments: for the time being, you have to determine the
+equivalent integer value by examining the curl.h C header file (in the
+curl package).
+
+CurlGlue class method "version" implements curl_version().

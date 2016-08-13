@@ -14,12 +14,12 @@ close(IN);
 
 print <<EOTXT;
 /*
- * The curl class is a JNI wrapper for libcurl. Please bear with me, I'm no
- * true java dude (yet). Improve what you think is bad and send me the updates!
- * daniel@haxx.se
+ * The curl class is a JNI wrapper for libcurl.
+ * Please bear with me, I'm no true java dude (yet) - Daniel S.
+ * Improve what you think is bad and send the updates to the libcurl list!
  *
- * This is meant as a raw, crude and low-level interface to libcurl. If you
- * want fancy stuff, build upon this.
+ * This is meant as a raw, crude and low-level interface to libcurl.
+ * If you want fancy stuff, build upon this.
  */
 
 public class CurlGlue
@@ -55,48 +55,58 @@ print <<EOTXT;
 
   public CurlGlue() {
     try {
-      javacurl_handle = jni_init();
+      curljava_handle = jni_init();
     } catch (Exception e) {
       e.printStackTrace();
     }
   }
 
   public void finalize() {
-    jni_cleanup(javacurl_handle);
+    jni_cleanup(curljava_handle);
   }
 
-  private int javacurl_handle;
+  private int curljava_handle;
 
   /* constructor and destructor for the libcurl handle */
   private native int jni_init();
-  private native void jni_cleanup(int javacurl_handle);
-  private native synchronized int jni_perform(int javacurl_handle);
+  private native void jni_cleanup(int curljava_handle);
+  private native synchronized int jni_perform(int curljava_handle);
 
   // Instead of varargs, we have different functions for each
   // kind of type setopt() can take
   private native int jni_setopt(int libcurl, int option, String value);
   private native int jni_setopt(int libcurl, int option, int value);
   private native int jni_setopt(int libcurl, int option, CurlWrite value);
+  private native int jni_setopt(int libcurl, int option, CurlRead value);
+  private native int jni_setopt(int libcurl, int option, CurlIO value);
 
   public native int getinfo();
 
   public int perform() {
-    return jni_perform(javacurl_handle);
+    return jni_perform(curljava_handle);
   }
   public int setopt(int option, int value) {
-    return jni_setopt(javacurl_handle, option, value);
+    return jni_setopt(curljava_handle, option, value);
   }
   public int setopt(int option, String value) {
-    return jni_setopt(javacurl_handle, option, value);
+    return jni_setopt(curljava_handle, option, value);
   }
   public int setopt(int option, CurlWrite value) {
-    return jni_setopt(javacurl_handle, option, value);
+    return jni_setopt(curljava_handle, option, value);
   }
+  public int setopt(int option, CurlRead value) {
+    return jni_setopt(curljava_handle, option, value);
+  }
+  public int setopt(int option, CurlIO value) {
+    return jni_setopt(curljava_handle, option, value);
+  }
+
+  public static native String version();
 
   static {
     try {
-      // Loading up javacurl.dll
-      System.loadLibrary("javacurl");
+      // Loading up the shared JNI
+      System.loadLibrary("curljava");
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -105,5 +115,3 @@ print <<EOTXT;
 }
 
 EOTXT
-
-
