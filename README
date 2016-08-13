@@ -20,7 +20,7 @@ stuff supported.
 
 Version 0.2.2 features:
 
- Only the "easy" interface is supported. No multi, no formadd, etc.
+Only the "easy" interface is supported. No multi, no formadd, etc.
 Interface class CurlWrite implements CURLOPT_WRITEFUNCTION. Interface class
 CurlRead implements CURLOPT_READFUNCTION. All other setopt() callbacks are
 not implemented.
@@ -36,3 +36,18 @@ equivalent integer value by examining the curl.h C header file (in the
 curl package).
 
 CurlGlue class method "version" implements curl_version().
+
+
+Development
+
+If you are going to extend the CurlGlue Java class then it might be easier to
+apply changes to MakeCurlGlue.pl instead of MakeCurlGlue.java; this is because
+of Perl's multiline feature you can directly copy & paste the Java code into
+the Perl script; MakeCurlGlue.java should then be synchronised when you've
+finished. The main goal to have MakeCurlGlue.java is to remove Perl dependency
+on Win32 platforms where not every Java developer who want to use curljava
+might have Perl installed. The makefiles are prepared to use MakeCurlGlue.pl
+instead of MakeCurlGlue.class, you only need to switch to the commented
+PARSEPRG and PARSECMD vars.
+
+

@@ -1,3 +1,7 @@
+#
+# $Id: acinclude.m4 42 2008-10-20 09:27:21Z patrick $
+#
+
 dnl These are the top-level macros provided:
 dnl
 dnl AC_PATH_JDK		Finds the JDK or accepts the location argument

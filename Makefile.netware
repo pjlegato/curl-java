@@ -3,16 +3,21 @@
 ## Makefile for building curljava.nlm (NetWare version - gnu make)
 ## Use: make -f Makefile.netware
 ##
-## Comments to: Guenter Knauf <eflash@gmx.net>
+## Comments to: Guenter Knauf http://www.gknw.net/phpbb
+##
+## $Id: Makefile.netware 42 2008-10-20 09:27:21Z patrick $
 #
 ###################################################################
 
+# Stop if we have no JAVA_HOME var pointing to J2SDK!
+ifndef JAVA_HOME
+$(error You must set the JAVA_HOME environment variable!)
+endif
 # Edit the path below to point to the base of your Novell NDK.
 ifndef NDKBASE
 NDKBASE = c:/novell
 $(warning Using makefile default: NDKBASE=$(NDKBASE))
 endif
-
 # Edit the path below to point to the base of your NetWare Java SDK.
 ifndef JDK
 JDK = ../../sdks/java-nw
@@ -20,7 +25,7 @@ $(warning Using makefile default: JDK=$(JDK))
 endif
 # Edit the path below to point to the base of your libcurl sources.
 ifndef LIBCURL_PATH
-LIBCURL_PATH = ../../curl-7.17.1
+LIBCURL_PATH = ../../curl-7.18.0
 $(warning Using makefile default: LIBCURL_PATH=$(LIBCURL_PATH))
 endif
 # Edit the path below to point to the base of your Zlib sources.
@@ -43,11 +48,8 @@ INSTDIR = testcurljava
 
 TARGET	= curljava
 SOEXT	= nlm
-VERMAJ	= 0
-VERMIN	= 2
-VERREV	= 2
 DESCR	= $(TARGET) - Java JNI binding to the cURL library
-COPYR	= Copyright (c) 2001-2008 Daniel Stenberg, <daniel@haxx.se>
+COPYR	= Copyright (C) 2001-2008 Daniel Stenberg, <daniel@haxx.se>.
 WWWURL	= http://curl.haxx.se/libcurl/java/
 #MTSAFE	= NO
 MTSAFE	= YES
@@ -66,12 +68,13 @@ ifdef METROWERKS
 else
 	CC = gcc
 endif
+CPP	= $(CC) -E
 PERL	= perl
-JAR	= jar
-JAVAC	= javac
-JAVAH	= javah
-TOUCH	= touch
-CP	= cp -afv
+JAR	= "$(JAVA_HOME)/bin/jar"
+JAVA	= "$(JAVA_HOME)/bin/java"
+JAVAC	= "$(JAVA_HOME)/bin/javac"
+JAVAH	= "$(JAVA_HOME)/bin/javah"
+CP	= cp -af
 # RM	= rm -f
 # if you want to mark the target as MTSAFE you will need a tool for
 # generating the xdc data for the linker; here's a minimal tool:
@@ -83,6 +86,12 @@ DB	= NDEBUG
 # DB	= DEBUG
 # Optimization: -O<n> or debugging: -g
 OPT	= -O2
+
+# version info fetched from configure.ac
+-include version.inc 
+
+JNI_VERSION_NLM = $(CURLJAVA_MAJOR),$(CURLJAVA_MINOR),$(CURLJAVA_MICRO)
+JNI_VERSION_STR = $(CURLJAVA_MAJOR).$(CURLJAVA_MINOR).$(CURLJAVA_MICRO)
 
 # Global flags for all compilers
 CFLAGS	= $(OPT) -D$(DB) -DNETWARE -DN_PLAT_NLM -nostdinc
@@ -111,7 +120,8 @@ ifeq ($(LIBARCH),LIBC)
 	PRELUDE = $(SDK_LIBC)/imports/libcpre.gcc.o
 else
 	PRELUDE = $(NDK_ROOT)/pre/prelude.o
-	CFLAGS += -include $(NDKBASE)/nlmconv/genlm.h
+	# CFLAGS += -include $(NDKBASE)/nlmconv/genlm.h
+	CFLAGS += -Dsocklen_t=int
 endif
 endif
 
@@ -157,55 +167,71 @@ CLASSES	= CurlGlue.class CurlWrite.class CurlRead.class CurlIO.class
 
 vpath %.c . $(LIBCURL_PATH)/lib
 
+# PARSEPRG = MakeCurlGlue.pl
+# PARSECMD = $(PERL) $(PARSEPRG)
+PARSEPRG = MakeCurlGlue.class
+PARSECMD = $(JAVA) -classpath $(CWD) $(PARSEPRG:.class=)
+
+# CWD = $(shell pwd)
+CWD = .
+
 .SUFFIXES: .java .class
 
-#all:		$(TARGET).nlm
-all:		test.class
+#all:	$(TARGET).nlm
+all:	test.class
 
-dist:		all
-		@-$(RM) -r $(LIBARCH)
-		@mkdir $(LIBARCH)
-		@mv $(TARGET).nlm $(LIBARCH)/.
-		-$(RM) *.o $(TARGET).map $(TARGET).ncv $(TARGET).def $(TARGET).xdc
+dist: all
+	@-$(RM) -r $(LIBARCH)
+	@mkdir $(LIBARCH)
+	@mv $(TARGET).nlm $(LIBARCH)/.
+	-$(RM) *.o $(TARGET).map $(TARGET).ncv $(TARGET).def $(TARGET).xdc
 
-install:	all
-		@[ -d $(INSTDIR) ] || mkdir $(INSTDIR)
-		@$(CP) $(TARGET).nlm $(INSTDIR)
-		@$(CP) *.class $(INSTDIR)
-		@$(CP) *.java $(INSTDIR)
-		@$(CP) *.ncf $(INSTDIR)
-		@$(CP) README $(INSTDIR)
+install: all
+	@[ -d $(INSTDIR) ] || mkdir $(INSTDIR)
+	@$(CP) $(TARGET).nlm $(INSTDIR)
+	@$(CP) *.class $(INSTDIR)
+	@$(CP) *.java $(INSTDIR)
+	@$(CP) *.ncf $(INSTDIR)
+	@$(CP) README $(INSTDIR)
 
 clean:
-		-$(RM) *.o $(TARGET).map $(TARGET).ncv $(TARGET).def $(TARGET).xdc
-		-$(RM) $(TARGET).imp $(TARGET).nlm 
-		-$(RM) $(CLASSES) test.class CurlGlue.h
-		-$(RM) -r $(LIBARCH)
+	-$(RM) $(TARGET).$(SOEXT) $(OBJS) CurlGlue.h 
+	-$(RM) $(TARGET).def $(TARGET).imp $(TARGET).xdc $(TARGET).map $(TARGET).ncv
+	-$(RM) $(CLASSES) test.class version.inc
+	-$(RM) -r $(LIBARCH)
 
-CurlGlue.h:	CurlGlue.class CurlGlue.java
-		$(JAVAH) $*
-		$(TOUCH) $@
+distclean: clean
+	-$(RM) MakeCurlGlue.class GetJniVersion.class
+	-$(RM) CurlGlue.java 
+
+version.inc: configure.ac GetJniVersion.class
+	$(JAVA) -classpath $(CWD) GetJniVersion $< $@
+
+CurlGlue.h: CurlGlue.class CurlGlue.java
+	$(JAVAH) -classpath $(CWD) $*
 
 .java.class:
-		$(JAVAC) $<
+	$(JAVAC) -classpath $(CWD) $<
 
-test.class:	test.java $(CLASSES) $(TARGET).nlm
-		$(JAVAC) $<
+test.class: test.java $(CLASSES) $(TARGET).nlm
+	$(JAVAC) -classpath $(CWD) $<
 
-%.jar:		$(CLASSES) test.class
-		$(JAR) -cvf $@ $^
+%.jar: $(CLASSES) test.class
+	$(JAR) -cvf $@ $^
 
-CurlGlue.java:	$(LIBCURL_PATH)/include/curl/curl.h $(LIBCURL_PATH)/include/curl/curlver.h
-		$(PERL) define2java.pl $^ > $@
+FORCE: ;
 
-$(TARGET).nlm:	CurlGlue.h $(OBJS) $(TARGET).def $(TARGET).imp $(XDCDATA)
-		@-$(RM) $@
-		$(LD) $(LDFLAGS) $(TARGET).def
+CurlGlue.java: $(LIBCURL_PATH)/include/curl/curl.h $(LIBCURL_PATH)/include/curl/curlver.h $(PARSEPRG) FORCE
+	$(CPP) $(CFLAGS) $< | $(PARSECMD) $(LIBCURL_PATH)/include/curl/curlver.h > $@
 
-%.xdc:		Makefile.netware
-		$(MPKXDC) $(XDCOPT) $@
+$(TARGET).$(SOEXT): CurlGlue.h $(OBJS) $(TARGET).def $(TARGET).imp $(XDCDATA)
+	@-$(RM) $@
+	$(LD) $(LDFLAGS) $(TARGET).def
 
-%.def:		Makefile.netware
+%.xdc: Makefile.netware
+	$(MPKXDC) $(XDCOPT) $@
+
+%.def: version.inc Makefile.netware
 	@echo $(DL)# DEF Linker File for use with gcc and nlmconv$(DL) > $@
 	@echo $(DL)# or with Codewarrior command line compiler.$(DL) >> $@
 	@echo $(DL)# Do not edit this file - it is created by make!$(DL) >> $@
@@ -213,7 +239,7 @@ $(TARGET).nlm:	CurlGlue.h $(OBJS) $(TARGET).def $(TARGET).imp $(XDCDATA)
 	@echo $(DL)#$(DL) >> $@
 	@echo $(DL)copyright "$(COPYR)"$(DL) >> $@
 	@echo $(DL)description "$(DESCR)"$(DL) >> $@
-	@echo $(DL)version $(VERMAJ),$(VERMIN),$(VERREV)$(DL) >> $@
+	@echo $(DL)version $(JNI_VERSION_NLM)$(DL) >> $@
 ifdef NLMTYPE
 	@echo $(DL)type $(NLMTYPE)$(DL) >> $@
 else
@@ -262,7 +288,7 @@ ifeq ($(LD),nlmconv)
 	@echo $(DL)output $(TARGET).nlm$(DL) >> $@
 endif
 
-%.imp:		Makefile.netware
+%.imp: Makefile.netware
 	@echo $(DL)# $@ - Exports from $(TARGET)$(DL) > $@
 	@echo $(DL)# Do not edit this file - it is created by make!$(DL) >> $@
 	@echo $(DL)# All your changes will be lost!!$(DL) >> $@
@@ -272,13 +298,15 @@ endif
 	@echo $(DL) Java_CurlGlue_jni_1init,$(DL) >> $@
 	@echo $(DL) Java_CurlGlue_jni_1perform,$(DL) >> $@
 	@echo $(DL) Java_CurlGlue_jni_1setopt__III,$(DL) >> $@
+	@echo $(DL) Java_CurlGlue_jni_1setopt__IILCurlIO_2,$(DL) >> $@
+	@echo $(DL) Java_CurlGlue_jni_1setopt__IILCurlRead_2,$(DL) >> $@
 	@echo $(DL) Java_CurlGlue_jni_1setopt__IILCurlWrite_2,$(DL) >> $@
 	@echo $(DL) Java_CurlGlue_jni_1setopt__IILjava_lang_String_2$(DL) >> $@
 
-%.ncf:		Makefile.netware
+%.ncf: Makefile.netware
 	@echo $(DL)# $@ - startfile for $(TARGET)$(DL) > $@
 	@echo $(DL)#$(DL) >> $@
-	@echo $(DL)java -autounload -ns -envCWD=sys:/$(INSTDIR) test$(DL) >> $@
+	@echo $(DL)java -autounload -ns -envCWD=sys:/$(INSTDIR) -classpath . test %1 %2 %3 %4 %5$(DL) >> $@
 	@echo $(DL)#$(DL) >> $@
 
 

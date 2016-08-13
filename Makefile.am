@@ -31,9 +31,10 @@ jar_DATA		=	curljava.jar
 curljava.jar:			$(CLASSES)
 	@JAVA_PATH@/jar cvf $@ $(CLASSES)
 
-CurlGlue.java:	define2java.pl @CURL_INC@/curl/curl.h @CURL_INC@/curl/curlver.h
-	$(PERL) define2java.pl @CURL_INC@/curl/curl.h			\
-		@CURL_INC@/curl/curlver.h > $@
+CurlGlue.java:	MakeCurlGlue.class					\
+		@CURL_INC@/curl/curl.h @CURL_INC@/curl/curlver.h
+	$(CC) -E -I@CURL_INC@ @CURL_INC@/curl/curl.h		|	\
+		@JAVA_PATH@/java MakeCurlGlue @CURL_INC@/curl/curlver.h > $@
 
 
 test:				test.class
@@ -48,14 +49,27 @@ clean-local:
 	$(RM) -rf test.class cookie.txt
 
 
-EXTRA_DIST		=	CurlRead.java				\
+#	OS dependent files.
+
+OS_DEPENDENT		=	Makefile.m32				\
+				Makefile.netware nwlib.c		\
+				GetJniVersion.java			\
+				curl-java.spec
+
+
+#	Obsolete files.
+
+OBSOLETE		=	Makefile.unix				\
+				MakeCurlGlue.pl				\
+				MANIFEST
+
+
+EXTRA_DIST		=	buildconf				\
+				CurlRead.java				\
 				CurlWrite.java				\
 				CurlIO.java				\
-				buildconf				\
-				define2java.pl				\
+				MakeCurlGlue.java			\
 				test.java				\
-				Makefile.m32				\
-				Makefile.netware			\
-				MANIFEST				\
-				nwlib.c					\
-				README
+				README					\
+				$(OS_DEPENDENT)				\
+				$(OBSOLETE)
